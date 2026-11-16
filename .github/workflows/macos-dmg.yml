@@ -26,6 +26,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.22.1'
+          cache: npm
       - name: Build app and disk image
         run: bash scripts/build-dmg.sh
       - uses: actions/upload-artifact@v4

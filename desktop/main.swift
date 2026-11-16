@@ -48,7 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         address.sin_addr.s_addr = inet_addr("127.0.0.1")
         let available = withUnsafePointer(to: &address) {
             $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                bind(socketFD, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) == 0
+                Darwin.bind(socketFD, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) == 0
             }
         }
         close(socketFD)

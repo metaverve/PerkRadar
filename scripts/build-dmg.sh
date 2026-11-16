@@ -51,6 +51,32 @@ plutil -lint "$app/Contents/Info.plist"
 codesign --force --sign - "$app/Contents/Resources/node/bin/node"
 codesign --force --sign - "$app"
 codesign --verify --deep --strict "$app"
+echo 'Checking packaged app startup and shutdown...'
+open -n -W --env DISABLE_SCHEDULER=1 "$app" &
+open_pid=$!
+ready=0
+for attempt in {1..90}; do
+  if curl -fsS --max-time 2 http://127.0.0.1:38471/api/health > "$temp_dir/health.json" 2>/dev/null; then
+    ready=1
+    break
+  fi
+  sleep 1
+done
+if [[ "$ready" != 1 ]]; then
+  cat "$HOME/Library/Application Support/PerkRadar/server.log" || true
+  osascript -e "tell application \"$app\" to quit" || true
+  echo 'Packaged app failed to start.' >&2
+  exit 1
+fi
+curl -fsS http://127.0.0.1:38471/ -o "$temp_dir/home.html"
+curl -fsS http://127.0.0.1:38471/api/deals -o "$temp_dir/deals.json"
+osascript -e "tell application \"$app\" to quit"
+wait "$open_pid"
+if curl -fsS --max-time 2 http://127.0.0.1:38471/api/health >/dev/null 2>&1; then
+  echo 'The app left its server running after quitting.' >&2
+  exit 1
+fi
+echo 'Packaged app startup, API, homepage, and shutdown checks passed.'
 ln -s /Applications "$temp_dir/image/Applications"
 dmg="dist/PerkRadar-${version}-${arch}.dmg"
 hdiutil create -volname PerkRadar -srcfolder "$temp_dir/image" -ov -format UDZO "$dmg"
